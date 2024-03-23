@@ -1,60 +1,49 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.9;
 
-//import "hardhat/console.sol";
-
 contract Assessment {
-    address payable public owner;
-    uint256 public balance;
+    address public owner;
+    uint256 public ethBalance;
+    uint256 public ethToInrRate;
 
-    event Deposit(uint256 amount);
-    event Withdraw(uint256 amount);
+    event EtherDeposited(address indexed depositor, uint256 amount);
+    event EtherWithdrawn(address indexed withdrawer, uint256 amount);
+    event ConversionRateUpdated(uint256 newRate);
 
-    constructor(uint initBalance) payable {
-        owner = payable(msg.sender);
-        balance = initBalance;
+    constructor(uint256 initEthBalance, uint256 initEthToInrRate) payable {
+        owner = msg.sender;
+        ethBalance = initEthBalance;
+        ethToInrRate = initEthToInrRate;
     }
 
-    function getBalance() public view returns(uint256){
-        return balance;
+    function getEthBalance() public view returns (uint256) {
+        return ethBalance;
     }
 
-    function deposit(uint256 _amount) public payable {
-        uint _previousBalance = balance;
-
-        // make sure this is the owner
-        require(msg.sender == owner, "You are not the owner of this account");
-
-        // perform transaction
-        balance += _amount;
-
-        // assert transaction completed successfully
-        assert(balance == _previousBalance + _amount);
-
-        // emit the event
-        emit Deposit(_amount);
+    function getEthToInrRate() public view returns (uint256) {
+        return ethToInrRate;
     }
 
-    // custom error
-    error InsufficientBalance(uint256 balance, uint256 withdrawAmount);
+    function depositEther() public payable {
+        ethBalance += msg.value;
+        emit EtherDeposited(msg.sender, msg.value);
+    }
 
-    function withdraw(uint256 _withdrawAmount) public {
-        require(msg.sender == owner, "You are not the owner of this account");
-        uint _previousBalance = balance;
-        if (balance < _withdrawAmount) {
-            revert InsufficientBalance({
-                balance: balance,
-                withdrawAmount: _withdrawAmount
-            });
-        }
+    function withdrawEther(uint256 _amount) public {
+        require(_amount <= ethBalance, "Insufficient balance");
+        ethBalance -= _amount;
+        payable(msg.sender).transfer(_amount);
+        emit EtherWithdrawn(msg.sender, _amount);
+    }
 
-        // withdraw the given amount
-        balance -= _withdrawAmount;
+    function updateEthToInrRate(uint256 _newRate) public {
+        require(msg.sender == owner, "Only owner can update conversion rate");
+        ethToInrRate = _newRate;
+        emit ConversionRateUpdated(_newRate);
+    }
 
-        // assert the balance is correct
-        assert(balance == (_previousBalance - _withdrawAmount));
-
-        // emit the event
-        emit Withdraw(_withdrawAmount);
+    function getEthBalanceInInr() public view returns (uint256) {
+        return ethBalance * ethToInrRate;
     }
 }
+
